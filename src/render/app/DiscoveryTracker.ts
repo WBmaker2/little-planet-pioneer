@@ -2,8 +2,11 @@ export class DiscoveryTracker {
   private readonly landmarkIds: ReadonlySet<string>;
   private readonly discoveredIds = new Set<string>();
 
-  constructor(landmarkIds: readonly string[]) {
+  constructor(landmarkIds: readonly string[], discoveredIds: readonly string[] = []) {
     this.landmarkIds = new Set(landmarkIds);
+    discoveredIds.forEach((id) => {
+      if (this.landmarkIds.has(id)) this.discoveredIds.add(id);
+    });
   }
 
   get discoveredCount(): number {
@@ -16,6 +19,10 @@ export class DiscoveryTracker {
 
   get isComplete(): boolean {
     return this.discoveredCount === this.landmarkIds.size;
+  }
+
+  get ids(): string[] {
+    return [...this.discoveredIds];
   }
 
   discover(landmarkId: string): boolean {

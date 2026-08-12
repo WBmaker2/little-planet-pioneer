@@ -44,6 +44,7 @@ export async function startThreeRenderer(
   let threeGame: ThreeGameApp | null = null;
   const hud = new ThreeHud(roots.threeUiRoot, {
     onStart: () => threeGame?.beginExploration(),
+    onRoverInput: (direction, pressed) => threeGame?.setRoverInput(direction, pressed),
     onRobotSelect: (robotId) => {
       simulationBridge.selectRobot(robotId as "waterdrop" | "spark" | "tick" | "sprout");
       hud.updateResources(simulationBridge.state.resources);
@@ -74,7 +75,15 @@ export async function startThreeRenderer(
   });
 
   threeGame = new ThreeGameApp(roots.threeRoot, {
-    onDiscovery: (state) => hud.updateDiscovery(state),
+    initialDiscoveredLandmarkIds: simulationBridge.state.discoveredLandmarkIds ?? [],
+    onDiscovery: (state) => {
+      hud.updateDiscovery(state);
+      const latest = saveManager.load() ?? createDefaultSaveData();
+      saveManager.save({
+        ...latest,
+        activeMission: { ...simulationBridge.state, discoveredLandmarkIds: state.discoveredIds },
+      });
+    },
     onFallback: () => {
       hud.dispose();
       onFallback();
@@ -85,6 +94,15 @@ export async function startThreeRenderer(
 
   hud.mount();
   hud.updateResources(simulationBridge.state.resources);
+  const restoredDiscoveries = simulationBridge.state.discoveredLandmarkIds ?? [];
+  if (restoredDiscoveries.length > 0) {
+    hud.updateDiscovery({
+      discoveredIds: restoredDiscoveries,
+      discoveredCount: restoredDiscoveries.length,
+      total: 3,
+      isComplete: restoredDiscoveries.length >= 3,
+    }, false);
+  }
   simulationBridge.state.buildings.forEach((building) => {
     threeGame?.placeBuilding(building.type, building.position);
   });

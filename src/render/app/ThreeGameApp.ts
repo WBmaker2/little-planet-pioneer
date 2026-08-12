@@ -1,13 +1,15 @@
 import * as THREE from "three";
 import { detectWebGLSupport } from "./three-capabilities";
-import { RoverController, type RoverInput } from "./RoverController";
+import { RoverController, roverDirectionFromKeyboardEvent, type RoverDirection, type RoverInput } from "./RoverController";
 import { DiscoveryTracker } from "./DiscoveryTracker";
+import { findNearbyLandmarks, type LandmarkPosition } from "./landmark-discovery";
 import { createRoverObject } from "../objects/Rover";
 import { createSupportRobotObject, type SupportRobotId } from "../objects/SupportRobot";
 import { createBuildingObject } from "../objects/BuildingObject";
 import type { BuildingType, Coordinate } from "../../core/types";
 
 export interface DiscoveryState {
+  discoveredIds: string[];
   discoveredCount: number;
   total: number;
   isComplete: boolean;
@@ -17,6 +19,7 @@ export interface ThreeGameAppOptions {
   onFallback: (reason: string) => void;
   onDiscovery?: (state: DiscoveryState) => void;
   detectWebGLSupport?: () => boolean;
+  initialDiscoveredLandmarkIds?: string[];
 }
 
 export class ThreeGameApp {
@@ -26,10 +29,11 @@ export class ThreeGameApp {
   private readonly roverController = new RoverController({ x: 0, z: 0 });
   private readonly rover = createRoverObject();
   private readonly input: RoverInput = { forward: false, backward: false, left: false, right: false };
-  private readonly discoveryTracker = new DiscoveryTracker(["crystal", "seed", "beacon"]);
+  private readonly discoveryTracker: DiscoveryTracker;
   private readonly raycaster = new THREE.Raycaster();
   private readonly pointer = new THREE.Vector2();
   private readonly landmarks = new Map<THREE.Object3D, string>();
+  private readonly landmarkPositions = new Map<string, LandmarkPosition>();
   private readonly buildings = new Map<string, THREE.Object3D>();
   private supportRobot: THREE.Group | null = null;
   private lastFrameTime = 0;
@@ -38,7 +42,9 @@ export class ThreeGameApp {
   constructor(
     private readonly host: HTMLElement,
     private readonly options: ThreeGameAppOptions,
-  ) {}
+  ) {
+    this.discoveryTracker = new DiscoveryTracker(["crystal", "seed", "beacon"], options.initialDiscoveredLandmarkIds);
+  }
 
   start(): boolean {
     const canUseWebGL = this.options.detectWebGLSupport ?? detectWebGLSupport;
@@ -60,6 +66,7 @@ export class ThreeGameApp {
       window.addEventListener("resize", this.resize);
       window.addEventListener("keydown", this.handleKeyDown);
       window.addEventListener("keyup", this.handleKeyUp);
+      window.addEventListener("blur", this.handleWindowBlur);
       this.renderer.domElement.addEventListener("pointerdown", this.handlePointerDown);
       this.renderer.domElement.addEventListener("webglcontextlost", this.handleContextLost);
       this.renderer.setAnimationLoop(this.render);
@@ -74,6 +81,10 @@ export class ThreeGameApp {
   beginExploration(): void {
     this.exploring = true;
     if (this.renderer) this.renderer.domElement.style.cursor = "crosshair";
+  }
+
+  setRoverInput(direction: RoverDirection, pressed: boolean): void {
+    this.input[direction] = pressed;
   }
 
   setSupportRobot(robotId: SupportRobotId): void {
@@ -130,7 +141,9 @@ export class ThreeGameApp {
       );
       marker.position.set(x, y, z);
       marker.userData.baseY = y;
+      marker.visible = !(this.options.initialDiscoveredLandmarkIds ?? []).includes(id);
       this.landmarks.set(marker, id);
+      this.landmarkPositions.set(id, { id, x, z });
       this.scene.add(marker);
     }
   }
@@ -164,24 +177,30 @@ export class ThreeGameApp {
       this.supportRobot.position.set(position.x - 0.58, 0.02 + Math.sin(pulseTime * 1.2) * 0.04, position.z + 0.58);
       this.supportRobot.rotation.y = -this.roverController.heading * 0.5;
     }
+    this.discoverNearbyLandmarks(position);
     this.camera.lookAt(position.x * 0.18, 0, position.z * 0.18);
     this.renderer.render(this.scene, this.camera);
   };
 
   private readonly handleKeyDown = (event: KeyboardEvent): void => {
-    const key = event.key.toLowerCase();
-    if (key === "w" || key === "arrowup") this.input.forward = true;
-    if (key === "s" || key === "arrowdown") this.input.backward = true;
-    if (key === "a" || key === "arrowleft") this.input.left = true;
-    if (key === "d" || key === "arrowright") this.input.right = true;
+    const direction = roverDirectionFromKeyboardEvent(event);
+    if (!direction) return;
+    event.preventDefault();
+    this.input[direction] = true;
   };
 
   private readonly handleKeyUp = (event: KeyboardEvent): void => {
-    const key = event.key.toLowerCase();
-    if (key === "w" || key === "arrowup") this.input.forward = false;
-    if (key === "s" || key === "arrowdown") this.input.backward = false;
-    if (key === "a" || key === "arrowleft") this.input.left = false;
-    if (key === "d" || key === "arrowright") this.input.right = false;
+    const direction = roverDirectionFromKeyboardEvent(event);
+    if (!direction) return;
+    event.preventDefault();
+    this.input[direction] = false;
+  };
+
+  private readonly handleWindowBlur = (): void => {
+    this.input.forward = false;
+    this.input.backward = false;
+    this.input.left = false;
+    this.input.right = false;
   };
 
   private readonly handlePointerDown = (event: PointerEvent): void => {
@@ -191,16 +210,44 @@ export class ThreeGameApp {
     this.pointer.y = -((event.clientY - bounds.top) / bounds.height) * 2 + 1;
     this.raycaster.setFromCamera(this.pointer, this.camera);
     const hit = this.raycaster.intersectObjects([...this.landmarks.keys()], false)[0]?.object;
-    const landmarkId = hit ? this.landmarks.get(hit) : undefined;
-    if (!hit || !landmarkId || !this.discoveryTracker.discover(landmarkId)) return;
+    const landmarkId = hit ? this.landmarks.get(hit) : this.findNearestLandmarkAtPointer(event, bounds);
+    if (landmarkId) this.discoverLandmark(landmarkId);
+  };
 
-    hit.visible = false;
+  private discoverNearbyLandmarks(position: { x: number; z: number }): void {
+    if (!this.exploring) return;
+    for (const landmarkId of findNearbyLandmarks(position, [...this.landmarkPositions.values()])) {
+      this.discoverLandmark(landmarkId);
+    }
+  }
+
+  private discoverLandmark(landmarkId: string): void {
+    if (!this.discoveryTracker.discover(landmarkId)) return;
+    for (const [object, id] of this.landmarks) {
+      if (id === landmarkId) object.visible = false;
+    }
     this.options.onDiscovery?.({
+      discoveredIds: this.discoveryTracker.ids,
       discoveredCount: this.discoveryTracker.discoveredCount,
       total: this.landmarks.size,
       isComplete: this.discoveryTracker.isComplete,
     });
-  };
+  }
+
+  private findNearestLandmarkAtPointer(event: PointerEvent, bounds: DOMRect): string | undefined {
+    const pointerX = event.clientX;
+    const pointerY = event.clientY;
+    let nearest: { id: string; distance: number } | undefined;
+    for (const [object, id] of this.landmarks) {
+      if (!object.visible) continue;
+      const projected = object.position.clone().project(this.camera);
+      const x = bounds.left + (projected.x + 1) * 0.5 * bounds.width;
+      const y = bounds.top + (1 - projected.y) * 0.5 * bounds.height;
+      const distance = Math.hypot(pointerX - x, pointerY - y);
+      if (distance <= 44 && (!nearest || distance < nearest.distance)) nearest = { id, distance };
+    }
+    return nearest?.id;
+  }
 
   private readonly handleContextLost = (event: Event): void => {
     event.preventDefault();
@@ -214,6 +261,7 @@ export class ThreeGameApp {
     window.removeEventListener("resize", this.resize);
     window.removeEventListener("keydown", this.handleKeyDown);
     window.removeEventListener("keyup", this.handleKeyUp);
+    window.removeEventListener("blur", this.handleWindowBlur);
     this.renderer?.domElement.removeEventListener("pointerdown", this.handlePointerDown);
     this.renderer?.dispose();
     this.renderer = null;

@@ -74,6 +74,29 @@ describe("SaveManager", () => {
     expect(new SaveManager(storage).load()?.activeMission?.robotId).toBeNull();
   });
 
+  it("round-trips discovered 3D landmarks in an active mission", () => {
+    const manager = new SaveManager(new MemoryStorage());
+    const data = {
+      ...createDefaultSaveData(),
+      activeMission: {
+        missionId: "plain-01",
+        seed: 1,
+        resources: { water: 6, energy: 5, parts: 5 },
+        buildings: [],
+        restoration: 0,
+        eventIndex: 0,
+        eventOrder: ["cracked-cable"],
+        resolvedEventIds: [],
+        robotId: null,
+        discoveredLandmarkIds: ["crystal"],
+      },
+    };
+
+    manager.save(data);
+
+    expect(manager.load()?.activeMission?.discoveredLandmarkIds).toEqual(["crystal"]);
+  });
+
   it("does not crash when browser storage is unavailable", () => {
     const unavailable: StorageAdapter = {
       get: () => { throw new Error("blocked"); },

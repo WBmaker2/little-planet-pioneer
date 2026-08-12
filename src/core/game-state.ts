@@ -32,5 +32,6 @@ export function createMissionState(
     eventOrder: rng.shuffle(mission.events.map(({ id }) => id)),
     resolvedEventIds: [],
     robotId: null,
+    discoveredLandmarkIds: [],
   }, robotId);
 }

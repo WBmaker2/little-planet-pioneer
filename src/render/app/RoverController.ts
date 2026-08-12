@@ -10,6 +10,16 @@ export interface RoverInput {
   right: boolean;
 }
 
+export type RoverDirection = keyof RoverInput;
+
+export function roverDirectionFromKeyboardEvent(event: Pick<KeyboardEvent, "code" | "key">): RoverDirection | null {
+  if (event.code === "KeyW" || event.key.toLowerCase() === "w" || event.key === "ArrowUp") return "forward";
+  if (event.code === "KeyS" || event.key.toLowerCase() === "s" || event.key === "ArrowDown") return "backward";
+  if (event.code === "KeyA" || event.key.toLowerCase() === "a" || event.key === "ArrowLeft") return "left";
+  if (event.code === "KeyD" || event.key.toLowerCase() === "d" || event.key === "ArrowRight") return "right";
+  return null;
+}
+
 export class RoverController {
   public readonly position: RoverPosition;
   public heading = 0;

@@ -56,6 +56,7 @@ function isPlanetState(value: unknown): value is PlanetState {
   if (!value || typeof value !== "object") return false;
   const state = value as Partial<PlanetState>;
   const resources = state.resources as Partial<PlanetState["resources"]> | undefined;
+  const discoveredLandmarkIds = state.discoveredLandmarkIds;
   return (
     typeof state.missionId === "string" &&
     missions.some(({ id }) => id === state.missionId) &&
@@ -70,6 +71,7 @@ function isPlanetState(value: unknown): value is PlanetState {
     Number.isInteger(state.eventIndex) && (state.eventIndex ?? -1) >= 0 &&
     Array.isArray(state.eventOrder) && state.eventOrder.every((id) => typeof id === "string") &&
     Array.isArray(state.resolvedEventIds) && state.resolvedEventIds.every((id) => typeof id === "string")
+    && (discoveredLandmarkIds === undefined || (Array.isArray(discoveredLandmarkIds) && discoveredLandmarkIds.every((id) => typeof id === "string")))
   );
 }
 
@@ -92,7 +94,7 @@ export class SaveManager {
           earnedCreditsByMission: parsed.profile.earnedCreditsByMission ?? {},
         },
         ...(isPlanetState(parsed.activeMission)
-          ? { activeMission: { ...parsed.activeMission, robotId: parsed.activeMission.robotId ?? null } }
+          ? { activeMission: { ...parsed.activeMission, robotId: parsed.activeMission.robotId ?? null, discoveredLandmarkIds: parsed.activeMission.discoveredLandmarkIds ?? [] } }
           : {}),
         settings: validateSettings(parsed.settings),
       };

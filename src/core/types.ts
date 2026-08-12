@@ -63,6 +63,7 @@ export interface PlanetState {
   eventOrder: string[];
   resolvedEventIds: string[];
   robotId?: SupportRobot["id"] | null;
+  discoveredLandmarkIds?: string[];
 }
 
 export interface MissionResult {

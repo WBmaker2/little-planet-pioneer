@@ -22,6 +22,34 @@ test("opens the 3D exploration shell with a game HUD", async ({ page }) => {
   await page.screenshot({ path: "docs/superpowers/verification/screenshots/3d-exploring-1024x768.png", fullPage: true });
 });
 
+test("discovers a nearby landmark automatically while the rover moves", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto("/");
+  await page.getByRole("button", { name: "탐험 시작" }).click();
+
+  await page.keyboard.down("d");
+  await page.waitForTimeout(900);
+  await page.keyboard.up("d");
+
+  await expect(page.getByText("발견 성공! 다음 신호를 찾아보세요.")).toBeVisible();
+  await expect(page.getByText("반짝이는 발견 지점을 찾아보세요 · 1/3")).toBeVisible();
+});
+
+test("shows low-friction rover controls on a touch-sized viewport", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+
+  await expect(page.getByRole("button", { name: "앞으로 이동" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "왼쪽 이동" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "오른쪽 이동" })).toBeVisible();
+  await page.getByRole("button", { name: "탐험 시작" }).click();
+  await page.getByRole("button", { name: "오른쪽 이동" }).dispatchEvent("pointerdown");
+  await page.waitForTimeout(900);
+  await page.getByRole("button", { name: "오른쪽 이동" }).dispatchEvent("pointerup");
+
+  await expect(page.getByText("발견 성공! 다음 신호를 찾아보세요.")).toBeVisible();
+});
+
 test("shows the 2D safety mode when requested", async ({ page }) => {
   await page.goto("/?renderer=2d");
 

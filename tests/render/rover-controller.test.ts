@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { RoverController } from "../../src/render/app/RoverController";
+import { RoverController, roverDirectionFromKeyboardEvent } from "../../src/render/app/RoverController";
 
 describe("RoverController", () => {
   it("moves forward at a deterministic speed", () => {
@@ -17,5 +17,10 @@ describe("RoverController", () => {
     expect(rover.position.z).toBeLessThanOrEqual(2);
     expect(rover.position.x).toBeGreaterThanOrEqual(-2);
     expect(rover.position.z).toBeGreaterThanOrEqual(-2);
+  });
+
+  it("uses physical WASD keys even when a Korean IME changes event.key", () => {
+    expect(roverDirectionFromKeyboardEvent({ code: "KeyW", key: "ㅈ" })).toBe("forward");
+    expect(roverDirectionFromKeyboardEvent({ code: "KeyD", key: "ㅇ" })).toBe("right");
   });
 });

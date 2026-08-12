@@ -2,6 +2,7 @@ import type { BuildingType } from "../core/types";
 
 export interface ThreeHudOptions {
   onStart: () => void;
+  onRoverInput?: (direction: "forward" | "backward" | "left" | "right", pressed: boolean) => void;
   onRobotSelect?: (robotId: string) => void;
   onBuildingSelect?: (buildingType: BuildingType) => void;
   onBuildingPlace?: (buildingType: BuildingType) => void;
@@ -9,6 +10,7 @@ export interface ThreeHudOptions {
 }
 
 export interface ThreeHudDiscoveryState {
+  discoveredIds?: string[];
   discoveredCount: number;
   total: number;
   isComplete: boolean;
@@ -30,6 +32,7 @@ export class ThreeHud {
   private buildingButtons: HTMLButtonElement[] = [];
   private placeButton: HTMLButtonElement | null = null;
   private productionButton: HTMLButtonElement | null = null;
+  private roverControlButtons: HTMLButtonElement[] = [];
   private selectedBuilding: BuildingType | null = null;
 
   constructor(
@@ -51,7 +54,7 @@ export class ThreeHud {
           <div class="three-hud__label"><span class="three-hud__signal"></span>현재 목표</div>
           <strong>첫 번째 착륙 지점을 찾아보세요</strong>
           <div class="three-hud__progress" aria-label="목표 진행도 1단계 중 3단계">
-            <span class="is-active"></span><span></span><span></span>
+            <span></span><span></span><span></span>
           </div>
         </section>
 
@@ -99,20 +102,29 @@ export class ThreeHud {
         </aside>
 
         <div class="three-hud__intro">
-          <p>로버를 움직여 반짝이는 발견 지점을 찾아보세요.</p>
+          <p>로버를 가까이 보내거나 반짝이는 지점을 눌러 발견하세요.</p>
           <button class="three-hud__start" type="button">탐험 시작</button>
         </div>
 
         <div class="three-hud__active" hidden>
           <span class="three-hud__live-dot"></span>
           <strong>탐험 중</strong>
-          <span>WASD 또는 방향키로 이동</span>
+          <span>WASD·방향키 또는 아래 버튼으로 이동</span>
         </div>
 
         <div class="three-hud__toast" aria-live="polite" hidden></div>
 
         <div class="three-hud__controls" aria-label="조작 방법">
-          <kbd>W A S D</kbd><span>이동</span><i></i><span>반짝이는 지점을 찾아보세요</span>
+          <kbd>W A S D</kbd><span>이동</span><i></i><span>가까이 가거나 지점을 눌러 발견</span>
+        </div>
+
+        <div class="three-hud__rover-controls" aria-label="로버 이동 버튼">
+          <button type="button" data-rover-direction="forward" aria-label="앞으로 이동">▲</button>
+          <div>
+            <button type="button" data-rover-direction="left" aria-label="왼쪽 이동">◀</button>
+            <button type="button" data-rover-direction="backward" aria-label="뒤로 이동">▼</button>
+            <button type="button" data-rover-direction="right" aria-label="오른쪽 이동">▶</button>
+          </div>
         </div>
       </div>
     `;
@@ -126,6 +138,7 @@ export class ThreeHud {
     this.buildingButtons = [...this.host.querySelectorAll<HTMLButtonElement>(".three-hud__building")];
     this.placeButton = this.host.querySelector<HTMLButtonElement>(".three-hud__place");
     this.productionButton = this.host.querySelector<HTMLButtonElement>(".three-hud__produce");
+    this.roverControlButtons = [...this.host.querySelectorAll<HTMLButtonElement>("[data-rover-direction]")];
     this.startButton?.addEventListener("click", this.handleStart);
     this.drawerToggle?.addEventListener("click", this.handleDrawerToggle);
     this.host.querySelector<HTMLButtonElement>(".three-hud__drawer-close")?.addEventListener("click", this.handleDrawerClose);
@@ -133,6 +146,12 @@ export class ThreeHud {
     this.buildingButtons.forEach((button) => button.addEventListener("click", this.handleBuildingSelect));
     this.placeButton?.addEventListener("click", this.handleBuildingPlace);
     this.productionButton?.addEventListener("click", this.handleProductionTurn);
+    this.roverControlButtons.forEach((button) => {
+      button.addEventListener("pointerdown", this.handleRoverPointerDown);
+      button.addEventListener("pointerup", this.handleRoverPointerUp);
+      button.addEventListener("pointercancel", this.handleRoverPointerUp);
+      button.addEventListener("pointerleave", this.handleRoverPointerUp);
+    });
   }
 
   dispose(): void {
@@ -143,6 +162,12 @@ export class ThreeHud {
     this.buildingButtons.forEach((button) => button.removeEventListener("click", this.handleBuildingSelect));
     this.placeButton?.removeEventListener("click", this.handleBuildingPlace);
     this.productionButton?.removeEventListener("click", this.handleProductionTurn);
+    this.roverControlButtons.forEach((button) => {
+      button.removeEventListener("pointerdown", this.handleRoverPointerDown);
+      button.removeEventListener("pointerup", this.handleRoverPointerUp);
+      button.removeEventListener("pointercancel", this.handleRoverPointerUp);
+      button.removeEventListener("pointerleave", this.handleRoverPointerUp);
+    });
     this.startButton = null;
     this.introPanel = null;
     this.activePanel = null;
@@ -152,11 +177,12 @@ export class ThreeHud {
     this.buildingButtons = [];
     this.placeButton = null;
     this.productionButton = null;
+    this.roverControlButtons = [];
     this.selectedBuilding = null;
     this.host.replaceChildren();
   }
 
-  updateDiscovery(state: ThreeHudDiscoveryState): void {
+  updateDiscovery(state: ThreeHudDiscoveryState, announce = true): void {
     const objective = this.host.querySelector<HTMLElement>(".three-hud__objective strong");
     const progress = this.host.querySelectorAll<HTMLElement>(".three-hud__progress span");
     const toast = this.host.querySelector<HTMLElement>(".three-hud__toast");
@@ -166,7 +192,7 @@ export class ThreeHud {
         : `반짝이는 발견 지점을 찾아보세요 · ${state.discoveredCount}/${state.total}`;
     }
     progress.forEach((bar, index) => bar.classList.toggle("is-active", index < state.discoveredCount));
-    if (toast) {
+    if (toast && announce) {
       toast.textContent = state.isComplete ? "탐험 완료! 새로운 행성 기록을 얻었어요." : "발견 성공! 다음 신호를 찾아보세요.";
       toast.hidden = false;
       window.setTimeout(() => { toast.hidden = true; }, 2200);
@@ -238,5 +264,18 @@ export class ThreeHud {
 
   private readonly handleProductionTurn = (): void => {
     this.options.onProductionTurn?.();
+  };
+
+  private readonly handleRoverPointerDown = (event: PointerEvent): void => {
+    const direction = (event.currentTarget as HTMLButtonElement).dataset.roverDirection as "forward" | "backward" | "left" | "right" | undefined;
+    if (!direction) return;
+    event.preventDefault();
+    this.options.onRoverInput?.(direction, true);
+  };
+
+  private readonly handleRoverPointerUp = (event: PointerEvent): void => {
+    const direction = (event.currentTarget as HTMLButtonElement).dataset.roverDirection as "forward" | "backward" | "left" | "right" | undefined;
+    if (!direction) return;
+    this.options.onRoverInput?.(direction, false);
   };
 }
