@@ -1,0 +1,11 @@
+node_modules/
+dist/
+test-results/
+.pnpm-store/
+.netlify/
+debug.log
+*.tsbuildinfo
+outputs/
+.env
+.env.*
+!.env.example
