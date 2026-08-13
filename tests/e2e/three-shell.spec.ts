@@ -63,24 +63,31 @@ test("guides the player into the operation panel after the first mission", async
   await expect(page.getByText("보석 3개를 모두 찾았어요!")).toBeVisible();
   const guide = page.getByRole("complementary", { name: "루미 AI 가이드" });
   await expect(guide).toContainText("작전 패널");
-  await guide.getByRole("button", { name: "다음 단계: 작전 패널 열기" }).click();
   await expect(page.getByRole("heading", { name: "지원 로봇" })).toBeVisible();
+  await expect(page.getByText(/2\/5 · 지원 로봇 고르기/)).toBeVisible();
   await expect(page.getByText(/진행 순서: ① 로봇 고르기/)).toBeVisible();
 });
 
-test("opens the operation panel from every part of the visible toggle", async ({ page }) => {
+test("keeps the operation panel open without a fold toggle", async ({ page }) => {
   await page.setViewportSize({ width: 762, height: 690 });
   await page.goto("/");
-  const toggle = page.getByRole("button", { name: "작전 패널" });
-  const box = await toggle.boundingBox();
-  expect(box).not.toBeNull();
-  if (!box) return;
+  await expect(page.getByRole("heading", { name: "지원 로봇" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "작전 패널" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "작전 패널 닫기" })).toHaveCount(0);
+});
 
-  for (const ratio of [0.2, 0.5, 0.8]) {
-    await page.mouse.click(box.x + box.width / 2, box.y + box.height * ratio);
-    await expect(page.getByRole("heading", { name: "지원 로봇" })).toBeVisible();
-    await page.getByRole("button", { name: "작전 패널 닫기" }).click();
-  }
+test("keeps the operation panel beside the touch controls on a mobile viewport", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+
+  const panel = page.locator(".three-hud__drawer");
+  const roverControls = page.locator(".three-hud__rover-controls");
+  const panelBox = await panel.boundingBox();
+  const roverBox = await roverControls.boundingBox();
+  expect(panelBox).not.toBeNull();
+  expect(roverBox).not.toBeNull();
+  if (!panelBox || !roverBox) return;
+  expect(panelBox.x).toBeGreaterThan(roverBox.x + roverBox.width);
 });
 
 test("shows low-friction rover controls on a touch-sized viewport", async ({ page }) => {
@@ -127,7 +134,6 @@ test("loads only the selected renderer entry on boot", async ({ page }) => {
 test("opens the 3D operation panel for a support robot", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto("/");
-  await page.getByRole("button", { name: "작전 패널" }).click();
 
   await expect(page.getByRole("heading", { name: "지원 로봇" })).toBeVisible();
   await page.getByRole("button", { name: /워터드롭/ }).click();
@@ -140,7 +146,6 @@ test("opens the 3D operation panel for a support robot", async ({ page }) => {
 test("places a facility and runs its next production turn", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto("/");
-  await page.getByRole("button", { name: "작전 패널" }).click();
 
   await page.getByRole("button", { name: /태양광 발전기/ }).click();
   await expect(page.locator(".three-hud__turn-preview strong")).toHaveText("예상 생산 에너지 +3 · 건설 부품 -2");
@@ -151,26 +156,25 @@ test("places a facility and runs its next production turn", async ({ page }) => 
   await page.getByRole("button", { name: "생산 턴 실행" }).click();
   await expect(page.getByText("생산 턴 완료 · 에너지 +3")).toBeVisible();
   await expect(page.locator("[data-resource='energy']")).toHaveText("11");
-  await expect(page.getByRole("complementary", { name: "루미 AI 가이드" })).toContainText("작전 완료");
+  await expect(page.getByRole("complementary", { name: "루미 AI 가이드" })).toContainText("첫 생산 완료");
   const nextExploration = page.getByRole("button", { name: "탐험 계속하기" });
   await expect(nextExploration).toBeVisible();
   await expect(nextExploration).toHaveClass(/gi-pulse/);
   await nextExploration.click();
   await expect(page.getByRole("complementary", { name: "루미 AI 가이드" })).toContainText("탐험 화면으로 돌아왔어");
-  await expect(page.getByRole("heading", { name: "지원 로봇" })).toBeHidden();
+  await expect(page.getByRole("heading", { name: "지원 로봇" })).toBeVisible();
   await page.screenshot({ path: "docs/superpowers/verification/screenshots/3d-facility-production-1280x720.png", fullPage: true });
 });
 
 test("resumes the 3D checkpoint after a reload", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto("/");
-  await page.getByRole("button", { name: "작전 패널" }).click();
   await page.getByRole("button", { name: /태양광 발전기/ }).click();
   await page.getByRole("button", { name: "배치하기" }).click();
   await expect(page.locator("[data-resource='energy']")).toHaveText("8");
 
   await page.reload();
   await expect(page.locator("canvas.three-canvas")).toBeVisible();
-  await page.getByRole("button", { name: "작전 패널" }).click();
+  await expect(page.getByRole("heading", { name: "지원 로봇" })).toBeVisible();
   await expect(page.locator("[data-resource='energy']")).toHaveText("8");
 });

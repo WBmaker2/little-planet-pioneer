@@ -28,7 +28,6 @@ export class ThreeHud {
   private startButton: HTMLButtonElement | null = null;
   private introPanel: HTMLElement | null = null;
   private activePanel: HTMLElement | null = null;
-  private drawerToggle: HTMLButtonElement | null = null;
   private drawer: HTMLElement | null = null;
   private robotButtons: HTMLButtonElement[] = [];
   private buildingButtons: HTMLButtonElement[] = [];
@@ -71,6 +70,7 @@ export class ThreeHud {
         <section class="three-hud__updates-dialog" id="three-updates-dialog" role="dialog" aria-label="업데이트 내역" hidden>
           <div class="three-hud__updates-heading"><strong>업데이트 내역</strong><button type="button" class="three-hud__updates-close" aria-label="업데이트 내역 닫기">×</button></div>
           <ul>
+            <li><time datetime="2026-08-13">2026-08-13</time><span>작전 패널을 항상 펼쳐 두고 2단계 선택 순서를 바로 보이게 했어요.</span></li>
             <li><time datetime="2026-08-13">2026-08-13</time><span>생산 턴 뒤 다음 탐험 안내와 단계별 버튼 강조를 추가했어요.</span></li>
             <li><time datetime="2026-08-13">2026-08-13</time><span>작전 패널 클릭 영역과 보석 찾기 안내를 개선했어요.</span></li>
           </ul>
@@ -82,13 +82,12 @@ export class ThreeHud {
           <div><span>🔩</span><strong data-resource="parts">5</strong><small>부품</small></div>
         </section>
 
-        <button class="three-hud__drawer-toggle" type="button" aria-expanded="false">작전 패널</button>
-        <aside class="three-hud__drawer" aria-label="작전 패널" hidden>
+        <aside class="three-hud__drawer" aria-label="작전 패널">
           <div class="three-hud__drawer-heading">
-            <p class="three-hud__label">개척 장비</p>
+            <p class="three-hud__label">작전 패널</p>
             <h2>지원 로봇</h2>
-            <button class="three-hud__drawer-close" type="button" aria-label="작전 패널 닫기">×</button>
           </div>
+          <p class="three-hud__drawer-step">1/5 · 보석 3개 찾기</p>
           <p class="three-hud__drawer-help">진행 순서: ① 로봇 고르기 → ② 시설 고르기 → ③ 배치하기 → ④ 생산 턴</p>
           <div class="three-hud__robot-list">
             <button class="three-hud__robot" type="button" data-robot="waterdrop" data-preview="다음 생산 턴 물 +2" aria-pressed="false">
@@ -155,7 +154,6 @@ export class ThreeHud {
     this.startButton = this.host.querySelector<HTMLButtonElement>(".three-hud__start");
     this.introPanel = this.host.querySelector<HTMLElement>(".three-hud__intro");
     this.activePanel = this.host.querySelector<HTMLElement>(".three-hud__active");
-    this.drawerToggle = this.host.querySelector<HTMLButtonElement>(".three-hud__drawer-toggle");
     this.drawer = this.host.querySelector<HTMLElement>(".three-hud__drawer");
     this.robotButtons = [...this.host.querySelectorAll<HTMLButtonElement>(".three-hud__robot")];
     this.buildingButtons = [...this.host.querySelectorAll<HTMLButtonElement>(".three-hud__building")];
@@ -164,8 +162,6 @@ export class ThreeHud {
     this.guideAction = this.host.querySelector<HTMLButtonElement>(".three-hud__guide-action");
     this.roverControlButtons = [...this.host.querySelectorAll<HTMLButtonElement>("[data-rover-direction]")];
     this.startButton?.addEventListener("click", this.handleStart);
-    this.drawerToggle?.addEventListener("click", this.handleDrawerToggle);
-    this.host.querySelector<HTMLButtonElement>(".three-hud__drawer-close")?.addEventListener("click", this.handleDrawerClose);
     this.robotButtons.forEach((button) => button.addEventListener("click", this.handleRobotSelect));
     this.buildingButtons.forEach((button) => button.addEventListener("click", this.handleBuildingSelect));
     this.placeButton?.addEventListener("click", this.handleBuildingPlace);
@@ -183,8 +179,6 @@ export class ThreeHud {
 
   dispose(): void {
     this.startButton?.removeEventListener("click", this.handleStart);
-    this.drawerToggle?.removeEventListener("click", this.handleDrawerToggle);
-    this.host.querySelector<HTMLButtonElement>(".three-hud__drawer-close")?.removeEventListener("click", this.handleDrawerClose);
     this.robotButtons.forEach((button) => button.removeEventListener("click", this.handleRobotSelect));
     this.buildingButtons.forEach((button) => button.removeEventListener("click", this.handleBuildingSelect));
     this.placeButton?.removeEventListener("click", this.handleBuildingPlace);
@@ -201,7 +195,6 @@ export class ThreeHud {
     this.startButton = null;
     this.introPanel = null;
     this.activePanel = null;
-    this.drawerToggle = null;
     this.drawer = null;
     this.robotButtons = [];
     this.buildingButtons = [];
@@ -223,15 +216,19 @@ export class ThreeHud {
         ? "보석 3개를 모두 찾았어요!"
         : `반짝이는 보석 찾기 · ${state.discoveredCount}/${state.total}`;
     }
+    if (state.isComplete) {
+      this.setOperationStep("2/5 · 지원 로봇 고르기");
+      this.robotButtons[0]?.classList.add("gi-pulse");
+    }
     progress.forEach((bar, index) => bar.classList.toggle("is-active", index < state.discoveredCount));
     progressContainer?.setAttribute("aria-label", `반짝이는 보석 ${state.discoveredCount}개 찾음 · 3개 중 ${state.discoveredCount}`);
     this.setGuideMessage(
       state.isComplete
-        ? "1단계 끝! 이제 작전 패널을 열고 지원 로봇 1개를 골라 보자."
+        ? "1단계 끝! 2단계: 오른쪽 작전 패널에서 지원 로봇 1개를 골라 보자."
         : state.discoveredCount > 0
           ? `좋아! ${state.discoveredCount}개 찾았어. 이제 ${state.total - state.discoveredCount}개 남았어. 계속 움직여 보자.`
           : "1단계: 로버를 움직여 반짝이는 보석 3개를 찾아보자. 가까이 가면 자동 발견돼.",
-      state.isComplete,
+      false,
     );
     if (toast && announce) {
       toast.textContent = state.isComplete ? "탐험 완료! 새로운 행성 기록을 얻었어요." : "발견 성공! 다음 신호를 찾아보세요.";
@@ -250,6 +247,11 @@ export class ThreeHud {
   updateBuildingPreview(message: string): void {
     const preview = this.host.querySelector<HTMLElement>(".three-hud__turn-preview strong");
     if (preview) preview.textContent = message;
+  }
+
+  private setOperationStep(message: string): void {
+    const step = this.host.querySelector<HTMLElement>(".three-hud__drawer-step");
+    if (step) step.textContent = message;
   }
 
   showToast(message: string): void {
@@ -271,6 +273,7 @@ export class ThreeHud {
 
   showProductionComplete(): void {
     this.setGuideMessage("첫 생산 완료! 이제 탐험 화면으로 돌아가 행성을 자유롭게 살펴보자.", false);
+    this.setOperationStep("완료 · 생산 턴을 실행했어요");
     if (!this.guideAction) return;
     this.guideAction.textContent = "탐험 계속하기";
     this.guideAction.classList.add("gi-pulse");
@@ -281,19 +284,14 @@ export class ThreeHud {
   showPlacementComplete(): void {
     this.placeButton?.classList.remove("gi-pulse");
     this.productionButton?.classList.add("gi-pulse");
+    this.setOperationStep("5/5 · 생산 턴 실행");
   }
 
   openOperationsPanel(): void {
-    if (!this.drawer || !this.drawerToggle) return;
-    this.drawer.hidden = false;
-    this.drawerToggle.setAttribute("aria-expanded", "true");
-    this.setGuideMessage("2단계: 먼저 지원 로봇 1개를 골라 보자.");
-  }
-
-  closeOperationsPanel(): void {
-    if (!this.drawer || !this.drawerToggle) return;
-    this.drawer.hidden = true;
-    this.drawerToggle.setAttribute("aria-expanded", "false");
+    this.drawer?.scrollIntoView({ block: "nearest" });
+    this.setOperationStep("2/5 · 지원 로봇 고르기");
+    this.robotButtons[0]?.classList.add("gi-pulse");
+    this.setGuideMessage("2단계: 오른쪽 작전 패널에서 지원 로봇 1개를 골라 보자.");
   }
 
   private readonly handleStart = (): void => {
@@ -325,19 +323,6 @@ export class ThreeHud {
     if (dialog) dialog.hidden = true;
   };
 
-  private readonly handleDrawerToggle = (): void => {
-    if (!this.drawer || !this.drawerToggle) return;
-    const willOpen = this.drawer.hidden;
-    this.drawer.hidden = !willOpen;
-    this.drawerToggle.setAttribute("aria-expanded", String(willOpen));
-  };
-
-  private readonly handleDrawerClose = (): void => {
-    if (!this.drawer || !this.drawerToggle) return;
-    this.drawer.hidden = true;
-    this.drawerToggle.setAttribute("aria-expanded", "false");
-  };
-
   private readonly handleRobotSelect = (event: Event): void => {
     const selected = event.currentTarget as HTMLButtonElement;
     this.robotButtons.forEach((button) => button.setAttribute("aria-pressed", String(button === selected)));
@@ -345,7 +330,9 @@ export class ThreeHud {
     if (preview) preview.textContent = selected.dataset.preview ?? "다음 생산 턴 보너스가 준비됐어요";
     const robotId = selected.dataset.robot;
     if (robotId) this.options.onRobotSelect?.(robotId);
+    this.robotButtons.forEach((button) => button.classList.remove("gi-pulse"));
     this.buildingButtons[0]?.classList.add("gi-pulse");
+    this.setOperationStep("3/5 · 시설 고르기");
     this.setGuideMessage("2단계 완료! 이제 시설 1개를 골라 보자.");
   };
 
@@ -358,6 +345,7 @@ export class ThreeHud {
     if (this.placeButton) this.placeButton.disabled = false;
     this.buildingButtons.forEach((button) => button.classList.remove("gi-pulse"));
     this.placeButton?.classList.add("gi-pulse");
+    this.setOperationStep("4/5 · 배치하기");
     this.updateBuildingPreview(selected.dataset.preview ?? "건설 효과를 확인하세요");
     this.options.onBuildingSelect?.(buildingType);
     this.setGuideMessage("3단계: 시설을 골랐어. 이제 ‘배치하기’를 눌러 보자.");

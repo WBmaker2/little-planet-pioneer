@@ -2,6 +2,42 @@ import { describe, expect, it, vi } from "vitest";
 import { ThreeHud } from "../../src/ui3d/ThreeHud";
 
 describe("ThreeHud guidance", () => {
+  it("keeps the operation panel visible with a clear first-step prompt", () => {
+    const host = document.createElement("div");
+    const hud = new ThreeHud(host, { onStart: vi.fn() });
+
+    hud.mount();
+
+    expect(host.querySelector<HTMLElement>(".three-hud__drawer")?.hidden).toBe(false);
+    expect(host.querySelector(".three-hud__drawer-toggle")).toBeNull();
+    expect(host.querySelector(".three-hud__drawer-close")).toBeNull();
+    expect(host.querySelector(".three-hud__drawer-step")?.textContent).toContain("1/5");
+    hud.dispose();
+  });
+
+  it("highlights each operation-panel action in order", () => {
+    const host = document.createElement("div");
+    const hud = new ThreeHud(host, { onStart: vi.fn() });
+
+    hud.mount();
+    hud.updateDiscovery({ discoveredCount: 3, total: 3, isComplete: true });
+    expect(host.querySelector(".three-hud__guide-message")?.textContent).toContain("2단계");
+    expect(host.querySelector<HTMLButtonElement>(".three-hud__robot")?.classList.contains("gi-pulse")).toBe(true);
+
+    host.querySelector<HTMLButtonElement>(".three-hud__robot")?.click();
+    expect(host.querySelector(".three-hud__drawer-step")?.textContent).toContain("3/5");
+    expect(host.querySelector<HTMLButtonElement>(".three-hud__building")?.classList.contains("gi-pulse")).toBe(true);
+
+    host.querySelector<HTMLButtonElement>(".three-hud__building")?.click();
+    expect(host.querySelector(".three-hud__drawer-step")?.textContent).toContain("4/5");
+    expect(host.querySelector<HTMLButtonElement>(".three-hud__place")?.classList.contains("gi-pulse")).toBe(true);
+
+    hud.showPlacementComplete();
+    expect(host.querySelector(".three-hud__drawer-step")?.textContent).toContain("5/5");
+    expect(host.querySelector<HTMLButtonElement>(".three-hud__produce")?.classList.contains("gi-pulse")).toBe(true);
+    hud.dispose();
+  });
+
   it("offers a pulsing next-exploration action after production completes", () => {
     const host = document.createElement("div");
     const onNextExploration = vi.fn();
@@ -51,10 +87,9 @@ describe("ThreeHud guidance", () => {
     hud.dispose();
   });
 
-  it("shows Lumi guidance and a next-stage action after the first mission", () => {
+  it("shows Lumi guidance beside the always-open operation panel after the first mission", () => {
     const host = document.createElement("div");
-    const onNextStage = vi.fn();
-    const hud = new ThreeHud(host, { onStart: vi.fn(), onNextStage });
+    const hud = new ThreeHud(host, { onStart: vi.fn() });
 
     hud.mount();
     expect(host.querySelector(".three-hud__guide")?.textContent).toContain("루미");
@@ -62,13 +97,10 @@ describe("ThreeHud guidance", () => {
 
     hud.updateDiscovery({ discoveredCount: 3, total: 3, isComplete: true });
 
-    const nextStage = host.querySelector<HTMLButtonElement>(".three-hud__guide-action");
     expect(host.querySelector(".three-hud__guide-message")?.textContent).toContain("작전 패널");
-    expect(nextStage?.hidden).toBe(false);
-    expect(nextStage?.classList.contains("gi-pulse")).toBe(true);
-
-    nextStage?.click();
-    expect(onNextStage).toHaveBeenCalledOnce();
+    expect(host.querySelector(".three-hud__drawer")?.hidden).toBe(false);
+    expect(host.querySelector(".three-hud__drawer-step")?.textContent).toContain("2/5");
+    expect(host.querySelector<HTMLButtonElement>(".three-hud__robot")?.classList.contains("gi-pulse")).toBe(true);
     hud.dispose();
   });
 });

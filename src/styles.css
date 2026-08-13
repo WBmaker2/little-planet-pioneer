@@ -79,7 +79,6 @@ body {
 .three-hud__resources,
 .three-hud__intro,
 .three-hud__active,
-.three-hud__drawer-toggle,
 .three-hud__drawer,
 .three-hud__updates-toggle,
 .three-hud__updates-dialog,
@@ -266,7 +265,7 @@ body {
 .three-hud__resources {
   position: absolute;
   right: clamp(20px, 4vw, 48px);
-  bottom: clamp(72px, 10vw, 108px);
+  top: clamp(206px, 26vh, 230px);
   display: flex;
   gap: 8px;
   padding: 8px;
@@ -290,35 +289,10 @@ body {
 .three-hud__resources strong { font-size: 0.9rem; }
 .three-hud__resources small { color: var(--muted); font-size: 0.64rem; }
 
-.three-hud__drawer-toggle {
-  position: absolute;
-  right: clamp(20px, 4vw, 48px);
-  bottom: clamp(20px, 4vw, 48px);
-  min-height: 34px;
-  padding: 7px 12px;
-  border: 1px solid rgba(145, 234, 219, 0.28);
-  border-radius: 999px;
-  color: var(--mint);
-  font: inherit;
-  font-size: 0.72rem;
-  font-weight: 800;
-  cursor: pointer;
-  background: rgba(5, 20, 35, 0.58);
-  backdrop-filter: blur(10px);
-  z-index: 5;
-}
-
-.three-hud__drawer-toggle:hover,
-.three-hud__drawer-toggle:focus-visible {
-  border-color: var(--mint);
-  outline: 2px solid var(--solar);
-  outline-offset: 3px;
-}
-
 .three-hud__drawer {
   position: absolute;
   right: clamp(20px, 4vw, 48px);
-  bottom: clamp(68px, 9vw, 100px);
+  top: clamp(304px, 40vh, 330px);
   width: min(300px, calc(100% - 40px));
   padding: 16px;
   border: 1px solid rgba(145, 234, 219, 0.3);
@@ -326,20 +300,45 @@ body {
   background: rgba(5, 20, 35, 0.86);
   box-shadow: 0 20px 54px rgba(0, 0, 0, 0.35);
   backdrop-filter: blur(16px);
-  max-height: calc(100% - 116px);
+  max-height: calc(100% - clamp(344px, 45vh, 374px));
   overflow-y: auto;
-  z-index: 6;
+  z-index: 7;
 }
 
-.three-hud__drawer[hidden] { display: none; }
+.three-hud__robot-list,
+.three-hud__building-list {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.three-hud__robot,
+.three-hud__building {
+  min-width: 0;
+  padding: 8px;
+}
 
 .three-hud__drawer-heading {
-  position: relative;
-  margin-bottom: 12px;
+  position: sticky;
+  top: -16px;
+  z-index: 3;
+  margin: -16px -16px 0;
+  padding: 16px 16px 8px;
+  background: rgba(5, 20, 35, 0.96);
 }
 
 .three-hud__drawer-heading .three-hud__label { margin-bottom: 4px; }
 .three-hud__drawer-heading h2 { margin: 0; font-size: 1.15rem; }
+
+.three-hud__drawer-step {
+  position: sticky;
+  top: 53px;
+  z-index: 2;
+  margin: 0 -16px 10px;
+  padding: 8px 16px;
+  color: var(--solar);
+  font-size: 0.74rem;
+  font-weight: 850;
+  background: rgba(5, 20, 35, 0.96);
+}
 
 .three-hud__drawer-help {
   margin: 0 0 12px;
@@ -395,20 +394,6 @@ body {
 .three-hud__updates-dialog ul { display: grid; gap: 10px; margin: 12px 0 0; padding: 0; list-style: none; }
 .three-hud__updates-dialog li { display: grid; gap: 3px; color: rgba(244, 251, 255, 0.78); font-size: 0.7rem; line-height: 1.4; }
 .three-hud__updates-dialog time { color: var(--solar); font-weight: 800; }
-
-.three-hud__drawer-close {
-  position: absolute;
-  top: -5px;
-  right: -2px;
-  width: 28px;
-  height: 28px;
-  border: 0;
-  border-radius: 50%;
-  color: var(--muted);
-  font-size: 1.25rem;
-  cursor: pointer;
-  background: rgba(255, 255, 255, 0.08);
-}
 
 .three-hud__robot-list { display: grid; gap: 7px; }
 
@@ -1250,16 +1235,20 @@ h2 {
 @media (max-width: 820px) {
   .three-hud__rover-controls { display: block; }
 
-  .three-hud__guide {
-    top: 184px;
-    width: min(278px, calc(100% - 40px));
+  .three-hud__drawer {
+    right: 20px;
+    top: 320px;
+    width: min(300px, calc(100% - 170px));
+    max-height: calc(100% - 340px);
   }
 
-  .three-hud__controls {
-    left: 152px;
-    right: 20px;
-    flex-wrap: wrap;
+  .three-hud__robot-list,
+  .three-hud__building-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .three-hud__robot span,
+  .three-hud__building span { font-size: 0.64rem; }
 
   .mission-grid {
     grid-template-columns: 1fr;
@@ -1309,6 +1298,66 @@ h2 {
   .building-palette > div {
     grid-column: 1 / -1;
   }
+}
+
+@media (max-width: 480px) {
+  .three-hud__brand {
+    top: 16px;
+    left: 20px;
+  }
+
+  .three-hud__brand h1 { font-size: 2rem; }
+
+  .three-hud__objective {
+    top: 104px;
+    right: 20px;
+    left: 20px;
+    width: auto;
+  }
+
+  .three-hud__updates-toggle {
+    top: 208px;
+    right: 20px;
+    margin-top: 0;
+  }
+
+  .three-hud__resources {
+    top: 244px;
+    right: auto;
+    left: 20px;
+    padding: 6px;
+  }
+
+  .three-hud__resources div { min-width: 60px; padding: 4px 6px; }
+
+  .three-hud__guide {
+    top: 320px;
+    left: 20px;
+    width: 120px;
+  }
+
+  .three-hud__intro {
+    top: 500px;
+    bottom: auto;
+    left: 20px;
+    width: 120px;
+    transform: none;
+  }
+
+  .three-hud__intro p { font-size: 0.68rem; }
+  .three-hud__start { min-width: 120px; padding: 9px 10px; font-size: 0.72rem; }
+
+  .three-hud__active {
+    left: 20px;
+    bottom: 154px;
+    width: 120px;
+    align-items: flex-start;
+    flex-direction: column;
+    border-radius: 16px;
+    font-size: 0.68rem;
+  }
+
+  .three-hud__controls { display: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
