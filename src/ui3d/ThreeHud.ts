@@ -3,6 +3,7 @@ import type { BuildingType } from "../core/types";
 export interface ThreeHudOptions {
   onStart: () => void;
   onNextStage?: () => void;
+  onNextExploration?: () => void;
   onRoverInput?: (direction: "forward" | "backward" | "left" | "right", pressed: boolean) => void;
   onRobotSelect?: (robotId: string) => void;
   onBuildingSelect?: (buildingType: BuildingType) => void;
@@ -66,6 +67,15 @@ export class ThreeHud {
           <button class="three-hud__guide-action" type="button" hidden>다음 단계: 작전 패널 열기</button>
         </aside>
 
+        <button class="three-hud__updates-toggle" type="button" aria-controls="three-updates-dialog">업데이트 내역</button>
+        <section class="three-hud__updates-dialog" id="three-updates-dialog" role="dialog" aria-label="업데이트 내역" hidden>
+          <div class="three-hud__updates-heading"><strong>업데이트 내역</strong><button type="button" class="three-hud__updates-close" aria-label="업데이트 내역 닫기">×</button></div>
+          <ul>
+            <li><time datetime="2026-08-13">2026-08-13</time><span>생산 턴 뒤 다음 탐험 안내와 단계별 버튼 강조를 추가했어요.</span></li>
+            <li><time datetime="2026-08-13">2026-08-13</time><span>작전 패널 클릭 영역과 보석 찾기 안내를 개선했어요.</span></li>
+          </ul>
+        </section>
+
         <section class="three-hud__resources" aria-label="개척 자원">
           <div><span>💧</span><strong data-resource="water">12</strong><small>물</small></div>
           <div><span>⚡</span><strong data-resource="energy">8</strong><small>에너지</small></div>
@@ -112,7 +122,7 @@ export class ThreeHud {
 
         <div class="three-hud__intro">
           <p><strong>1단계 · 보석 3개 찾기</strong><br>탐험 시작 후 화살표/WASD로 움직여 보세요.<br>보석에 가까이 가면 자동으로 발견돼요.</p>
-          <button class="three-hud__start" type="button">탐험 시작</button>
+          <button class="three-hud__start gi-pulse" type="button">탐험 시작</button>
         </div>
 
         <div class="three-hud__active" hidden>
@@ -161,6 +171,8 @@ export class ThreeHud {
     this.placeButton?.addEventListener("click", this.handleBuildingPlace);
     this.productionButton?.addEventListener("click", this.handleProductionTurn);
     this.guideAction?.addEventListener("click", this.handleGuideAction);
+    this.host.querySelector<HTMLButtonElement>(".three-hud__updates-toggle")?.addEventListener("click", this.handleUpdatesToggle);
+    this.host.querySelector<HTMLButtonElement>(".three-hud__updates-close")?.addEventListener("click", this.handleUpdatesClose);
     this.roverControlButtons.forEach((button) => {
       button.addEventListener("pointerdown", this.handleRoverPointerDown);
       button.addEventListener("pointerup", this.handleRoverPointerUp);
@@ -178,6 +190,8 @@ export class ThreeHud {
     this.placeButton?.removeEventListener("click", this.handleBuildingPlace);
     this.productionButton?.removeEventListener("click", this.handleProductionTurn);
     this.guideAction?.removeEventListener("click", this.handleGuideAction);
+    this.host.querySelector<HTMLButtonElement>(".three-hud__updates-toggle")?.removeEventListener("click", this.handleUpdatesToggle);
+    this.host.querySelector<HTMLButtonElement>(".three-hud__updates-close")?.removeEventListener("click", this.handleUpdatesClose);
     this.roverControlButtons.forEach((button) => {
       button.removeEventListener("pointerdown", this.handleRoverPointerDown);
       button.removeEventListener("pointerup", this.handleRoverPointerUp);
@@ -249,7 +263,24 @@ export class ThreeHud {
   setGuideMessage(message: string, showAction = false): void {
     const guideMessage = this.host.querySelector<HTMLElement>(".three-hud__guide-message");
     if (guideMessage) guideMessage.textContent = message;
-    if (this.guideAction) this.guideAction.hidden = !showAction;
+    if (this.guideAction) {
+      this.guideAction.hidden = !showAction;
+      this.guideAction.classList.toggle("gi-pulse", showAction || this.guideAction.dataset.action === "next-exploration");
+    }
+  }
+
+  showProductionComplete(): void {
+    this.setGuideMessage("첫 생산 완료! 이제 탐험 화면으로 돌아가 행성을 자유롭게 살펴보자.", false);
+    if (!this.guideAction) return;
+    this.guideAction.textContent = "탐험 계속하기";
+    this.guideAction.classList.add("gi-pulse");
+    this.guideAction.hidden = false;
+    this.guideAction.dataset.action = "next-exploration";
+  }
+
+  showPlacementComplete(): void {
+    this.placeButton?.classList.remove("gi-pulse");
+    this.productionButton?.classList.add("gi-pulse");
   }
 
   openOperationsPanel(): void {
@@ -259,15 +290,39 @@ export class ThreeHud {
     this.setGuideMessage("2단계: 먼저 지원 로봇 1개를 골라 보자.");
   }
 
+  closeOperationsPanel(): void {
+    if (!this.drawer || !this.drawerToggle) return;
+    this.drawer.hidden = true;
+    this.drawerToggle.setAttribute("aria-expanded", "false");
+  }
+
   private readonly handleStart = (): void => {
     this.introPanel?.setAttribute("hidden", "true");
     this.activePanel?.removeAttribute("hidden");
+    this.startButton?.classList.remove("gi-pulse");
     this.setGuideMessage("1단계: 화살표/WASD로 움직여 반짝이는 보석 3개를 찾아보자.");
     this.options.onStart();
   };
 
   private readonly handleGuideAction = (): void => {
+    if (this.guideAction?.dataset.action === "next-exploration") {
+      this.guideAction.hidden = true;
+      this.guideAction.classList.remove("gi-pulse");
+      delete this.guideAction.dataset.action;
+      this.options.onNextExploration?.();
+      return;
+    }
     this.options.onNextStage?.();
+  };
+
+  private readonly handleUpdatesToggle = (): void => {
+    const dialog = this.host.querySelector<HTMLElement>(".three-hud__updates-dialog");
+    if (dialog) dialog.hidden = false;
+  };
+
+  private readonly handleUpdatesClose = (): void => {
+    const dialog = this.host.querySelector<HTMLElement>(".three-hud__updates-dialog");
+    if (dialog) dialog.hidden = true;
   };
 
   private readonly handleDrawerToggle = (): void => {
@@ -290,6 +345,7 @@ export class ThreeHud {
     if (preview) preview.textContent = selected.dataset.preview ?? "다음 생산 턴 보너스가 준비됐어요";
     const robotId = selected.dataset.robot;
     if (robotId) this.options.onRobotSelect?.(robotId);
+    this.buildingButtons[0]?.classList.add("gi-pulse");
     this.setGuideMessage("2단계 완료! 이제 시설 1개를 골라 보자.");
   };
 
@@ -300,6 +356,8 @@ export class ThreeHud {
     this.selectedBuilding = buildingType;
     this.buildingButtons.forEach((button) => button.setAttribute("aria-pressed", String(button === selected)));
     if (this.placeButton) this.placeButton.disabled = false;
+    this.buildingButtons.forEach((button) => button.classList.remove("gi-pulse"));
+    this.placeButton?.classList.add("gi-pulse");
     this.updateBuildingPreview(selected.dataset.preview ?? "건설 효과를 확인하세요");
     this.options.onBuildingSelect?.(buildingType);
     this.setGuideMessage("3단계: 시설을 골랐어. 이제 ‘배치하기’를 눌러 보자.");
@@ -310,8 +368,9 @@ export class ThreeHud {
   };
 
   private readonly handleProductionTurn = (): void => {
+    this.productionButton?.classList.remove("gi-pulse");
     this.options.onProductionTurn?.();
-    this.setGuideMessage("생산 턴 완료! 자원이 늘었는지 확인하고 다음 탐험을 준비해 보자.");
+    this.showProductionComplete();
   };
 
   private readonly handleRoverPointerDown = (event: PointerEvent): void => {

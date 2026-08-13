@@ -45,6 +45,12 @@ export async function startThreeRenderer(
   const hud = new ThreeHud(roots.threeUiRoot, {
     onStart: () => threeGame?.beginExploration(),
     onNextStage: () => hud.openOperationsPanel(),
+    onNextExploration: () => {
+      threeGame?.beginExploration();
+      hud.closeOperationsPanel();
+      hud.setGuideMessage("탐험 화면으로 돌아왔어. 화살표/WASD로 행성을 자유롭게 살펴보자.");
+      hud.showToast("탐험 화면으로 돌아왔어요");
+    },
     onRoverInput: (direction, pressed) => threeGame?.setRoverInput(direction, pressed),
     onRobotSelect: (robotId) => {
       simulationBridge.selectRobot(robotId as "waterdrop" | "spark" | "tick" | "sprout");
@@ -64,6 +70,7 @@ export async function startThreeRenderer(
       hud.updateResources(simulationBridge.state.resources);
       hud.showToast(`${BUILDING_LABELS[buildingType]}를 배치했어요`);
       hud.setGuideMessage("시설을 배치했어! 이제 생산 턴 실행을 눌러 자원을 모아 보자.");
+      hud.showPlacementComplete();
     },
     onProductionTurn: () => {
       simulationBridge.produceTurn();

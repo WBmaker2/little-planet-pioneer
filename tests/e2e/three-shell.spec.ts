@@ -8,6 +8,9 @@ test("opens the 3D exploration shell with a game HUD", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "별빛 개척대" })).toBeVisible();
   await expect(page.getByText("반짝이는 보석 3개 찾기")).toBeVisible();
   await expect(page.getByRole("button", { name: "탐험 시작" })).toBeVisible();
+  await page.getByRole("button", { name: "업데이트 내역" }).click();
+  await expect(page.getByRole("dialog", { name: "업데이트 내역" })).toContainText("2026-08-13");
+  await page.getByRole("button", { name: "업데이트 내역 닫기" }).click();
   await expect(page.locator("#ui-root")).toBeHidden();
   await page.screenshot({ path: "docs/superpowers/verification/screenshots/3d-shell-1024x768.png", fullPage: true });
 
@@ -148,6 +151,13 @@ test("places a facility and runs its next production turn", async ({ page }) => 
   await page.getByRole("button", { name: "생산 턴 실행" }).click();
   await expect(page.getByText("생산 턴 완료 · 에너지 +3")).toBeVisible();
   await expect(page.locator("[data-resource='energy']")).toHaveText("11");
+  await expect(page.getByRole("complementary", { name: "루미 AI 가이드" })).toContainText("작전 완료");
+  const nextExploration = page.getByRole("button", { name: "탐험 계속하기" });
+  await expect(nextExploration).toBeVisible();
+  await expect(nextExploration).toHaveClass(/gi-pulse/);
+  await nextExploration.click();
+  await expect(page.getByRole("complementary", { name: "루미 AI 가이드" })).toContainText("탐험 화면으로 돌아왔어");
+  await expect(page.getByRole("heading", { name: "지원 로봇" })).toBeHidden();
   await page.screenshot({ path: "docs/superpowers/verification/screenshots/3d-facility-production-1280x720.png", fullPage: true });
 });
 
