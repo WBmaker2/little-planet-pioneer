@@ -54,16 +54,16 @@ export class ThreeHud {
 
         <section class="three-hud__objective" aria-label="현재 목표">
           <div class="three-hud__label"><span class="three-hud__signal"></span>현재 목표</div>
-          <strong>첫 번째 착륙 지점을 찾아보세요</strong>
-          <div class="three-hud__progress" aria-label="목표 진행도 1단계 중 3단계">
+          <strong>반짝이는 보석 3개 찾기</strong>
+          <div class="three-hud__progress" aria-label="반짝이는 보석 0개 찾음 · 3개 중 0개">
             <span></span><span></span><span></span>
           </div>
         </section>
 
         <aside class="three-hud__guide" aria-label="루미 AI 가이드">
           <div class="three-hud__guide-heading"><span class="three-hud__guide-avatar">루</span><strong>루미 가이드</strong><span class="three-hud__guide-status">AI</span></div>
-          <p class="three-hud__guide-message">안녕! 나는 루미야. 탐험 시작을 누르면 다음 할 일을 알려줄게!</p>
-          <button class="three-hud__guide-action" type="button" hidden>작전 패널 열기</button>
+          <p class="three-hud__guide-message">안녕! 나는 루미야. 먼저 ‘탐험 시작’을 누르자.</p>
+          <button class="three-hud__guide-action" type="button" hidden>다음 단계: 작전 패널 열기</button>
         </aside>
 
         <section class="three-hud__resources" aria-label="개척 자원">
@@ -79,6 +79,7 @@ export class ThreeHud {
             <h2>지원 로봇</h2>
             <button class="three-hud__drawer-close" type="button" aria-label="작전 패널 닫기">×</button>
           </div>
+          <p class="three-hud__drawer-help">진행 순서: ① 로봇 고르기 → ② 시설 고르기 → ③ 배치하기 → ④ 생산 턴</p>
           <div class="three-hud__robot-list">
             <button class="three-hud__robot" type="button" data-robot="waterdrop" data-preview="다음 생산 턴 물 +2" aria-pressed="false">
               <strong>워터드롭</strong><span>다음 생산 턴 물 +2</span>
@@ -110,20 +111,20 @@ export class ThreeHud {
         </aside>
 
         <div class="three-hud__intro">
-          <p>로버를 가까이 보내거나 반짝이는 지점을 눌러 발견하세요.</p>
+          <p><strong>1단계 · 보석 3개 찾기</strong><br>탐험 시작 후 화살표/WASD로 움직여 보세요.<br>보석에 가까이 가면 자동으로 발견돼요.</p>
           <button class="three-hud__start" type="button">탐험 시작</button>
         </div>
 
         <div class="three-hud__active" hidden>
           <span class="three-hud__live-dot"></span>
           <strong>탐험 중</strong>
-          <span>WASD·방향키 또는 아래 버튼으로 이동</span>
+          <span>화살표/WASD로 이동 · 보석에 가까이 가면 자동 발견</span>
         </div>
 
         <div class="three-hud__toast" aria-live="polite" hidden></div>
 
         <div class="three-hud__controls" aria-label="조작 방법">
-          <kbd>W A S D</kbd><span>이동</span><i></i><span>가까이 가거나 지점을 눌러 발견</span>
+          <kbd>W A S D</kbd><span>이동</span><i></i><span>보석 3개 찾기</span>
         </div>
 
         <div class="three-hud__rover-controls" aria-label="로버 이동 버튼">
@@ -200,20 +201,22 @@ export class ThreeHud {
 
   updateDiscovery(state: ThreeHudDiscoveryState, announce = true): void {
     const objective = this.host.querySelector<HTMLElement>(".three-hud__objective strong");
+    const progressContainer = this.host.querySelector<HTMLElement>(".three-hud__progress");
     const progress = this.host.querySelectorAll<HTMLElement>(".three-hud__progress span");
     const toast = this.host.querySelector<HTMLElement>(".three-hud__toast");
     if (objective) {
       objective.textContent = state.isComplete
-        ? "행성의 첫 비밀을 모두 발견했어요!"
-        : `반짝이는 발견 지점을 찾아보세요 · ${state.discoveredCount}/${state.total}`;
+        ? "보석 3개를 모두 찾았어요!"
+        : `반짝이는 보석 찾기 · ${state.discoveredCount}/${state.total}`;
     }
     progress.forEach((bar, index) => bar.classList.toggle("is-active", index < state.discoveredCount));
+    progressContainer?.setAttribute("aria-label", `반짝이는 보석 ${state.discoveredCount}개 찾음 · 3개 중 ${state.discoveredCount}`);
     this.setGuideMessage(
       state.isComplete
-        ? "첫 미션 완료! 이제 작전 패널에서 지원 로봇을 고르고 시설을 배치해 보자."
+        ? "1단계 끝! 이제 작전 패널을 열고 지원 로봇 1개를 골라 보자."
         : state.discoveredCount > 0
-          ? `${state.discoveredCount}/${state.total} 발견했어! 로버를 움직여 다음 반짝이는 지점을 찾아보자.`
-          : "1단계: 로버를 움직여 가까이 가거나 반짝이는 지점을 눌러 발견해 보자.",
+          ? `좋아! ${state.discoveredCount}개 찾았어. 이제 ${state.total - state.discoveredCount}개 남았어. 계속 움직여 보자.`
+          : "1단계: 로버를 움직여 반짝이는 보석 3개를 찾아보자. 가까이 가면 자동 발견돼.",
       state.isComplete,
     );
     if (toast && announce) {
@@ -253,13 +256,13 @@ export class ThreeHud {
     if (!this.drawer || !this.drawerToggle) return;
     this.drawer.hidden = false;
     this.drawerToggle.setAttribute("aria-expanded", "true");
-    this.setGuideMessage("2단계 시작! 지원 로봇을 고르고, 시설을 선택한 뒤 배치하기를 눌러 보자.");
+    this.setGuideMessage("2단계: 먼저 지원 로봇 1개를 골라 보자.");
   }
 
   private readonly handleStart = (): void => {
     this.introPanel?.setAttribute("hidden", "true");
     this.activePanel?.removeAttribute("hidden");
-    this.setGuideMessage("1단계: 로버를 움직여 가까이 가거나 반짝이는 지점을 눌러 발견해 보자.");
+    this.setGuideMessage("1단계: 화살표/WASD로 움직여 반짝이는 보석 3개를 찾아보자.");
     this.options.onStart();
   };
 
@@ -287,7 +290,7 @@ export class ThreeHud {
     if (preview) preview.textContent = selected.dataset.preview ?? "다음 생산 턴 보너스가 준비됐어요";
     const robotId = selected.dataset.robot;
     if (robotId) this.options.onRobotSelect?.(robotId);
-    this.setGuideMessage("좋아! 이제 시설을 선택하고 배치 보너스 미리보기를 확인해 보자.");
+    this.setGuideMessage("2단계 완료! 이제 시설 1개를 골라 보자.");
   };
 
   private readonly handleBuildingSelect = (event: Event): void => {
@@ -299,7 +302,7 @@ export class ThreeHud {
     if (this.placeButton) this.placeButton.disabled = false;
     this.updateBuildingPreview(selected.dataset.preview ?? "건설 효과를 확인하세요");
     this.options.onBuildingSelect?.(buildingType);
-    this.setGuideMessage("시설을 골랐어! 배치하기를 눌러 행성에 시설을 세워 보자.");
+    this.setGuideMessage("3단계: 시설을 골랐어. 이제 ‘배치하기’를 눌러 보자.");
   };
 
   private readonly handleBuildingPlace = (): void => {

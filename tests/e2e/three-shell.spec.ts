@@ -6,7 +6,7 @@ test("opens the 3D exploration shell with a game HUD", async ({ page }) => {
 
   await expect(page.locator("canvas.three-canvas")).toBeVisible();
   await expect(page.getByRole("heading", { name: "별빛 개척대" })).toBeVisible();
-  await expect(page.getByText("첫 번째 착륙 지점을 찾아보세요")).toBeVisible();
+  await expect(page.getByText("반짝이는 보석 3개 찾기")).toBeVisible();
   await expect(page.getByRole("button", { name: "탐험 시작" })).toBeVisible();
   await expect(page.locator("#ui-root")).toBeHidden();
   await page.screenshot({ path: "docs/superpowers/verification/screenshots/3d-shell-1024x768.png", fullPage: true });
@@ -15,7 +15,7 @@ test("opens the 3D exploration shell with a game HUD", async ({ page }) => {
   await expect(page.getByText("탐험 중")).toBeVisible();
   await page.mouse.click(525, 300);
   await expect(page.getByText("발견 성공! 다음 신호를 찾아보세요.")).toBeVisible();
-  await expect(page.getByText("반짝이는 발견 지점을 찾아보세요 · 1/3")).toBeVisible();
+  await expect(page.getByText("반짝이는 보석 찾기 · 1/3")).toBeVisible();
   await page.keyboard.down("d");
   await page.waitForTimeout(300);
   await page.keyboard.up("d");
@@ -32,7 +32,7 @@ test("discovers a nearby landmark automatically while the rover moves", async ({
   await page.keyboard.up("d");
 
   await expect(page.getByText("발견 성공! 다음 신호를 찾아보세요.")).toBeVisible();
-  await expect(page.getByText("반짝이는 발견 지점을 찾아보세요 · 1/3")).toBeVisible();
+  await expect(page.getByText("반짝이는 보석 찾기 · 1/3")).toBeVisible();
 });
 
 test("guides the player into the operation panel after the first mission", async ({ page }) => {
@@ -57,11 +57,27 @@ test("guides the player into the operation panel after the first mission", async
   await page.waitForTimeout(930);
   await page.keyboard.up("w");
 
-  await expect(page.getByText("행성의 첫 비밀을 모두 발견했어요!")).toBeVisible();
+  await expect(page.getByText("보석 3개를 모두 찾았어요!")).toBeVisible();
   const guide = page.getByRole("complementary", { name: "루미 AI 가이드" });
   await expect(guide).toContainText("작전 패널");
-  await guide.getByRole("button", { name: "작전 패널 열기" }).click();
+  await guide.getByRole("button", { name: "다음 단계: 작전 패널 열기" }).click();
   await expect(page.getByRole("heading", { name: "지원 로봇" })).toBeVisible();
+  await expect(page.getByText(/진행 순서: ① 로봇 고르기/)).toBeVisible();
+});
+
+test("opens the operation panel from every part of the visible toggle", async ({ page }) => {
+  await page.setViewportSize({ width: 762, height: 690 });
+  await page.goto("/");
+  const toggle = page.getByRole("button", { name: "작전 패널" });
+  const box = await toggle.boundingBox();
+  expect(box).not.toBeNull();
+  if (!box) return;
+
+  for (const ratio of [0.2, 0.5, 0.8]) {
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height * ratio);
+    await expect(page.getByRole("heading", { name: "지원 로봇" })).toBeVisible();
+    await page.getByRole("button", { name: "작전 패널 닫기" }).click();
+  }
 });
 
 test("shows low-friction rover controls on a touch-sized viewport", async ({ page }) => {

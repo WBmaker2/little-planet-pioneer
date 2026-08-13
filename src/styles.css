@@ -284,6 +284,7 @@ body {
   cursor: pointer;
   background: rgba(5, 20, 35, 0.58);
   backdrop-filter: blur(10px);
+  z-index: 5;
 }
 
 .three-hud__drawer-toggle:hover,
@@ -306,6 +307,7 @@ body {
   backdrop-filter: blur(16px);
   max-height: calc(100% - 116px);
   overflow-y: auto;
+  z-index: 6;
 }
 
 .three-hud__drawer[hidden] { display: none; }
@@ -317,6 +319,16 @@ body {
 
 .three-hud__drawer-heading .three-hud__label { margin-bottom: 4px; }
 .three-hud__drawer-heading h2 { margin: 0; font-size: 1.15rem; }
+
+.three-hud__drawer-help {
+  margin: 0 0 12px;
+  padding: 9px 10px;
+  border-radius: 10px;
+  color: rgba(244, 251, 255, 0.78);
+  font-size: 0.7rem;
+  line-height: 1.45;
+  background: rgba(145, 234, 219, 0.08);
+}
 
 .three-hud__drawer-close {
   position: absolute;
@@ -461,6 +473,8 @@ body {
   text-shadow: 0 3px 16px rgba(0, 0, 0, 0.5);
 }
 
+.three-hud__intro p strong { color: var(--mint); }
+
 .three-hud__start {
   min-width: 164px;
   min-height: 46px;
@@ -528,6 +542,7 @@ body {
   gap: 8px;
   color: rgba(244, 251, 255, 0.66);
   font-size: 0.72rem;
+  z-index: 1;
 }
 
 .three-hud__controls kbd {
