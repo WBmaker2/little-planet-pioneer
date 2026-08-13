@@ -35,13 +35,50 @@ test("discovers a nearby landmark automatically while the rover moves", async ({
   await expect(page.getByText("반짝이는 발견 지점을 찾아보세요 · 1/3")).toBeVisible();
 });
 
+test("guides the player into the operation panel after the first mission", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto("/");
+  await expect(page.getByRole("complementary", { name: "루미 AI 가이드" })).toContainText("탐험 시작");
+  await page.getByRole("button", { name: "탐험 시작" }).click();
+
+  await page.keyboard.down("d");
+  await page.waitForTimeout(720);
+  await page.keyboard.up("d");
+  await page.keyboard.down("w");
+  await page.waitForTimeout(300);
+  await page.keyboard.up("w");
+  await page.keyboard.down("s");
+  await page.waitForTimeout(850);
+  await page.keyboard.up("s");
+  await page.keyboard.down("a");
+  await page.waitForTimeout(1380);
+  await page.keyboard.up("a");
+  await page.keyboard.down("w");
+  await page.waitForTimeout(930);
+  await page.keyboard.up("w");
+
+  await expect(page.getByText("행성의 첫 비밀을 모두 발견했어요!")).toBeVisible();
+  const guide = page.getByRole("complementary", { name: "루미 AI 가이드" });
+  await expect(guide).toContainText("작전 패널");
+  await guide.getByRole("button", { name: "작전 패널 열기" }).click();
+  await expect(page.getByRole("heading", { name: "지원 로봇" })).toBeVisible();
+});
+
 test("shows low-friction rover controls on a touch-sized viewport", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
 
-  await expect(page.getByRole("button", { name: "앞으로 이동" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "위로 이동" })).toBeVisible();
   await expect(page.getByRole("button", { name: "왼쪽 이동" })).toBeVisible();
   await expect(page.getByRole("button", { name: "오른쪽 이동" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "아래로 이동" })).toBeVisible();
+  const roverRows = page.locator(".three-hud__rover-controls-row");
+  await expect(roverRows).toHaveCount(3);
+  await expect(roverRows.nth(0).locator("[data-rover-direction]")).toHaveAttribute("data-rover-direction", "forward");
+  await expect(roverRows.nth(1).locator("[data-rover-direction]")).toHaveCount(2);
+  await expect(roverRows.nth(1).locator("[data-rover-direction]").nth(0)).toHaveAttribute("data-rover-direction", "left");
+  await expect(roverRows.nth(1).locator("[data-rover-direction]").nth(1)).toHaveAttribute("data-rover-direction", "right");
+  await expect(roverRows.nth(2).locator("[data-rover-direction]")).toHaveAttribute("data-rover-direction", "backward");
   await page.getByRole("button", { name: "탐험 시작" }).click();
   await page.getByRole("button", { name: "오른쪽 이동" }).dispatchEvent("pointerdown");
   await page.waitForTimeout(900);

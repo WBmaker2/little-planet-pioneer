@@ -2,6 +2,7 @@ import type { BuildingType } from "../core/types";
 
 export interface ThreeHudOptions {
   onStart: () => void;
+  onNextStage?: () => void;
   onRoverInput?: (direction: "forward" | "backward" | "left" | "right", pressed: boolean) => void;
   onRobotSelect?: (robotId: string) => void;
   onBuildingSelect?: (buildingType: BuildingType) => void;
@@ -32,6 +33,7 @@ export class ThreeHud {
   private buildingButtons: HTMLButtonElement[] = [];
   private placeButton: HTMLButtonElement | null = null;
   private productionButton: HTMLButtonElement | null = null;
+  private guideAction: HTMLButtonElement | null = null;
   private roverControlButtons: HTMLButtonElement[] = [];
   private selectedBuilding: BuildingType | null = null;
 
@@ -57,6 +59,12 @@ export class ThreeHud {
             <span></span><span></span><span></span>
           </div>
         </section>
+
+        <aside class="three-hud__guide" aria-label="루미 AI 가이드">
+          <div class="three-hud__guide-heading"><span class="three-hud__guide-avatar">루</span><strong>루미 가이드</strong><span class="three-hud__guide-status">AI</span></div>
+          <p class="three-hud__guide-message">안녕! 나는 루미야. 탐험 시작을 누르면 다음 할 일을 알려줄게!</p>
+          <button class="three-hud__guide-action" type="button" hidden>작전 패널 열기</button>
+        </aside>
 
         <section class="three-hud__resources" aria-label="개척 자원">
           <div><span>💧</span><strong data-resource="water">12</strong><small>물</small></div>
@@ -119,11 +127,15 @@ export class ThreeHud {
         </div>
 
         <div class="three-hud__rover-controls" aria-label="로버 이동 버튼">
-          <button type="button" data-rover-direction="forward" aria-label="앞으로 이동">▲</button>
-          <div>
+          <div class="three-hud__rover-controls-row">
+            <button type="button" data-rover-direction="forward" aria-label="위로 이동">▲</button>
+          </div>
+          <div class="three-hud__rover-controls-row">
             <button type="button" data-rover-direction="left" aria-label="왼쪽 이동">◀</button>
-            <button type="button" data-rover-direction="backward" aria-label="뒤로 이동">▼</button>
             <button type="button" data-rover-direction="right" aria-label="오른쪽 이동">▶</button>
+          </div>
+          <div class="three-hud__rover-controls-row">
+            <button type="button" data-rover-direction="backward" aria-label="아래로 이동">▼</button>
           </div>
         </div>
       </div>
@@ -138,6 +150,7 @@ export class ThreeHud {
     this.buildingButtons = [...this.host.querySelectorAll<HTMLButtonElement>(".three-hud__building")];
     this.placeButton = this.host.querySelector<HTMLButtonElement>(".three-hud__place");
     this.productionButton = this.host.querySelector<HTMLButtonElement>(".three-hud__produce");
+    this.guideAction = this.host.querySelector<HTMLButtonElement>(".three-hud__guide-action");
     this.roverControlButtons = [...this.host.querySelectorAll<HTMLButtonElement>("[data-rover-direction]")];
     this.startButton?.addEventListener("click", this.handleStart);
     this.drawerToggle?.addEventListener("click", this.handleDrawerToggle);
@@ -146,6 +159,7 @@ export class ThreeHud {
     this.buildingButtons.forEach((button) => button.addEventListener("click", this.handleBuildingSelect));
     this.placeButton?.addEventListener("click", this.handleBuildingPlace);
     this.productionButton?.addEventListener("click", this.handleProductionTurn);
+    this.guideAction?.addEventListener("click", this.handleGuideAction);
     this.roverControlButtons.forEach((button) => {
       button.addEventListener("pointerdown", this.handleRoverPointerDown);
       button.addEventListener("pointerup", this.handleRoverPointerUp);
@@ -162,6 +176,7 @@ export class ThreeHud {
     this.buildingButtons.forEach((button) => button.removeEventListener("click", this.handleBuildingSelect));
     this.placeButton?.removeEventListener("click", this.handleBuildingPlace);
     this.productionButton?.removeEventListener("click", this.handleProductionTurn);
+    this.guideAction?.removeEventListener("click", this.handleGuideAction);
     this.roverControlButtons.forEach((button) => {
       button.removeEventListener("pointerdown", this.handleRoverPointerDown);
       button.removeEventListener("pointerup", this.handleRoverPointerUp);
@@ -177,6 +192,7 @@ export class ThreeHud {
     this.buildingButtons = [];
     this.placeButton = null;
     this.productionButton = null;
+    this.guideAction = null;
     this.roverControlButtons = [];
     this.selectedBuilding = null;
     this.host.replaceChildren();
@@ -192,6 +208,14 @@ export class ThreeHud {
         : `반짝이는 발견 지점을 찾아보세요 · ${state.discoveredCount}/${state.total}`;
     }
     progress.forEach((bar, index) => bar.classList.toggle("is-active", index < state.discoveredCount));
+    this.setGuideMessage(
+      state.isComplete
+        ? "첫 미션 완료! 이제 작전 패널에서 지원 로봇을 고르고 시설을 배치해 보자."
+        : state.discoveredCount > 0
+          ? `${state.discoveredCount}/${state.total} 발견했어! 로버를 움직여 다음 반짝이는 지점을 찾아보자.`
+          : "1단계: 로버를 움직여 가까이 가거나 반짝이는 지점을 눌러 발견해 보자.",
+      state.isComplete,
+    );
     if (toast && announce) {
       toast.textContent = state.isComplete ? "탐험 완료! 새로운 행성 기록을 얻었어요." : "발견 성공! 다음 신호를 찾아보세요.";
       toast.hidden = false;
@@ -219,10 +243,28 @@ export class ThreeHud {
     window.setTimeout(() => { toast.hidden = true; }, 2200);
   }
 
+  setGuideMessage(message: string, showAction = false): void {
+    const guideMessage = this.host.querySelector<HTMLElement>(".three-hud__guide-message");
+    if (guideMessage) guideMessage.textContent = message;
+    if (this.guideAction) this.guideAction.hidden = !showAction;
+  }
+
+  openOperationsPanel(): void {
+    if (!this.drawer || !this.drawerToggle) return;
+    this.drawer.hidden = false;
+    this.drawerToggle.setAttribute("aria-expanded", "true");
+    this.setGuideMessage("2단계 시작! 지원 로봇을 고르고, 시설을 선택한 뒤 배치하기를 눌러 보자.");
+  }
+
   private readonly handleStart = (): void => {
     this.introPanel?.setAttribute("hidden", "true");
     this.activePanel?.removeAttribute("hidden");
+    this.setGuideMessage("1단계: 로버를 움직여 가까이 가거나 반짝이는 지점을 눌러 발견해 보자.");
     this.options.onStart();
+  };
+
+  private readonly handleGuideAction = (): void => {
+    this.options.onNextStage?.();
   };
 
   private readonly handleDrawerToggle = (): void => {
@@ -245,6 +287,7 @@ export class ThreeHud {
     if (preview) preview.textContent = selected.dataset.preview ?? "다음 생산 턴 보너스가 준비됐어요";
     const robotId = selected.dataset.robot;
     if (robotId) this.options.onRobotSelect?.(robotId);
+    this.setGuideMessage("좋아! 이제 시설을 선택하고 배치 보너스 미리보기를 확인해 보자.");
   };
 
   private readonly handleBuildingSelect = (event: Event): void => {
@@ -256,6 +299,7 @@ export class ThreeHud {
     if (this.placeButton) this.placeButton.disabled = false;
     this.updateBuildingPreview(selected.dataset.preview ?? "건설 효과를 확인하세요");
     this.options.onBuildingSelect?.(buildingType);
+    this.setGuideMessage("시설을 골랐어! 배치하기를 눌러 행성에 시설을 세워 보자.");
   };
 
   private readonly handleBuildingPlace = (): void => {
@@ -264,6 +308,7 @@ export class ThreeHud {
 
   private readonly handleProductionTurn = (): void => {
     this.options.onProductionTurn?.();
+    this.setGuideMessage("생산 턴 완료! 자원이 늘었는지 확인하고 다음 탐험을 준비해 보자.");
   };
 
   private readonly handleRoverPointerDown = (event: PointerEvent): void => {

@@ -75,6 +75,7 @@ body {
 
 .three-hud__brand,
 .three-hud__objective,
+.three-hud__guide,
 .three-hud__resources,
 .three-hud__intro,
 .three-hud__active,
@@ -167,6 +168,78 @@ body {
 .three-hud__progress .is-active {
   background: var(--mint);
   box-shadow: 0 0 10px rgba(53, 207, 184, 0.55);
+}
+
+.three-hud__guide {
+  position: absolute;
+  top: clamp(194px, 27vh, 246px);
+  left: clamp(20px, 4vw, 48px);
+  width: min(300px, calc(100% - 40px));
+  padding: 12px 14px;
+  border: 1px solid rgba(145, 234, 219, 0.26);
+  border-radius: 16px;
+  background: rgba(5, 20, 35, 0.64);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(10px);
+}
+
+.three-hud__guide-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--mint);
+  font-size: 0.75rem;
+  font-weight: 850;
+}
+
+.three-hud__guide-avatar {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 1px solid rgba(145, 234, 219, 0.58);
+  border-radius: 9px;
+  color: var(--navy);
+  background: var(--mint);
+  box-shadow: 0 0 16px rgba(53, 207, 184, 0.42);
+}
+
+.three-hud__guide-status {
+  margin-left: auto;
+  padding: 3px 6px;
+  border: 1px solid rgba(145, 234, 219, 0.24);
+  border-radius: 999px;
+  color: rgba(244, 251, 255, 0.62);
+  font-size: 0.58rem;
+  letter-spacing: 0.08em;
+}
+
+.three-hud__guide-message {
+  margin: 9px 0 0;
+  color: rgba(244, 251, 255, 0.84);
+  font-size: 0.76rem;
+  line-height: 1.45;
+}
+
+.three-hud__guide-action {
+  width: 100%;
+  margin-top: 10px;
+  padding: 8px 10px;
+  border: 1px solid rgba(145, 234, 219, 0.54);
+  border-radius: 9px;
+  color: var(--navy);
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 850;
+  cursor: pointer;
+  background: var(--mint);
+}
+
+.three-hud__guide-action:hover,
+.three-hud__guide-action:focus-visible {
+  background: var(--mint-strong);
+  outline: 2px solid var(--solar);
+  outline-offset: 2px;
 }
 
 .three-hud__resources {
@@ -483,8 +556,12 @@ body {
   text-align: center;
 }
 
-.three-hud__rover-controls > button,
-.three-hud__rover-controls div button {
+.three-hud__rover-controls-row {
+  display: flex;
+  justify-content: center;
+}
+
+.three-hud__rover-controls-row button {
   width: 36px;
   height: 36px;
   margin: 2px;
@@ -1091,6 +1168,11 @@ h2 {
 
 @media (max-width: 820px) {
   .three-hud__rover-controls { display: block; }
+
+  .three-hud__guide {
+    top: 184px;
+    width: min(278px, calc(100% - 40px));
+  }
 
   .three-hud__controls {
     left: 152px;

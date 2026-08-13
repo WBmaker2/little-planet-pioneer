@@ -44,6 +44,7 @@ export async function startThreeRenderer(
   let threeGame: ThreeGameApp | null = null;
   const hud = new ThreeHud(roots.threeUiRoot, {
     onStart: () => threeGame?.beginExploration(),
+    onNextStage: () => hud.openOperationsPanel(),
     onRoverInput: (direction, pressed) => threeGame?.setRoverInput(direction, pressed),
     onRobotSelect: (robotId) => {
       simulationBridge.selectRobot(robotId as "waterdrop" | "spark" | "tick" | "sprout");
@@ -62,6 +63,7 @@ export async function startThreeRenderer(
       threeGame?.placeBuilding(buildingType, { x: 0, y: 0 });
       hud.updateResources(simulationBridge.state.resources);
       hud.showToast(`${BUILDING_LABELS[buildingType]}를 배치했어요`);
+      hud.setGuideMessage("시설을 배치했어! 이제 생산 턴 실행을 눌러 자원을 모아 보자.");
     },
     onProductionTurn: () => {
       simulationBridge.produceTurn();
